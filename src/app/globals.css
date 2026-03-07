@@ -883,6 +883,94 @@ body {
     color: var(--text-secondary);
 }
 
+/* Extra Notes */
+.extra-notes-page {
+    display: flex;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.extra-notes-card {
+    width: min(100%, 560px);
+    padding: 24px;
+    border-radius: 22px;
+    border: 1px solid rgba(15, 118, 110, 0.16);
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.extra-notes-card h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+.extra-notes-card p {
+    margin: 0 0 16px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.extra-notes-textarea {
+    width: 100%;
+    min-height: 168px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.92);
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.extra-notes-textarea:focus {
+    outline: none;
+    border-color: rgba(15, 118, 110, 0.45);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.extra-notes-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.extra-notes-skip,
+.extra-notes-submit {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.extra-notes-skip {
+    border: 1px solid rgba(15, 118, 110, 0.25);
+    background: white;
+    color: var(--primary);
+}
+
+.extra-notes-submit {
+    background: #cbd5e1;
+    color: white;
+    cursor: not-allowed;
+}
+
+.extra-notes-submit.active {
+    cursor: pointer;
+    background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+    box-shadow: 0 10px 22px rgba(15, 118, 110, 0.28);
+}
+
+.extra-notes-skip:active,
+.extra-notes-submit.active:active {
+    transform: translateY(1px);
+}
+
 /* Summary Page */
 .summary-card {
     background: var(--card-bg);

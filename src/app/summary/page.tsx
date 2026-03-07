@@ -182,14 +182,24 @@ export default function SummaryPage() {
     });
     const top3Pain = painPoints.sort((a, b) => b.weight - a.weight).slice(0, 3);
 
-    // 计算 ADHD 疑似度百分比（加权综合）
-    const suspicionPercent = Math.min(100, Math.round(
-      radarScores.attention * 0.30 +
-      radarScores.hyperactive * 0.30 +
-      radarScores.executive * 0.15 +
-      radarScores.development * 0.15 +
-      radarScores.impairment * 0.10
-    ));
+    // 计算 ADHD 疑似度百分比（基于 DSM-5 诊断逻辑）
+    // 1. 核心症状基础分：取两个维度中较高者为主，较低者为辅
+    const inattentivePercent = (dimScores['注意缺陷'] / 18) * 100;
+    const hyperactivePercent = (dimScores['多动冲动'] / 18) * 100;
+    const baseScore = Math.max(inattentivePercent, hyperactivePercent) * 0.7
+                    + Math.min(inattentivePercent, hyperactivePercent) * 0.3;
+
+    // 2. DSM-5 硬性门槛：未满足则降低疑似度
+    let modifier = 1.0;
+    if (!record.diagnosis?.durationMet) modifier *= 0.6;   // 症状未持续6个月
+    if (!record.diagnosis?.onsetMet) modifier *= 0.75;     // 非12岁前出现
+    if (dimScores['功能损害'] === 0) modifier *= 0.65;     // 无功能损害
+
+    // 3. 支撑证据加成（最多+15%）
+    const execBoost = (dimScores['执行功能'] / 8) * 8;     // 执行功能，最多+8%
+    const familyBoost = ((record.diagnosis?.familyHistory || 0) / 4) * 7; // 家族史，最多+7%
+
+    const suspicionPercent = Math.min(100, Math.round(baseScore * modifier + execBoost + familyBoost));
 
     return { categoryScores, dimScores, radarScores, top3Pain, suspicionPercent };
   }, [record, responses]);
@@ -352,6 +362,12 @@ export default function SummaryPage() {
       else if (r === 'down') other.push(`• ${text}（可能）`);
     });
     lines.push(other.length > 0 ? other.join('\n') : '无');
+
+    if (record.extraNotes?.trim()) {
+      lines.push('');
+      lines.push('【患者自述补充】');
+      lines.push(record.extraNotes.trim());
+    }
 
     return lines.join('\n');
   };
@@ -674,6 +690,13 @@ export default function SummaryPage() {
                 })()}
               </div>
             </div>
+
+            {record.extraNotes?.trim() && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【患者自述补充】</div>
+                <div style={{ color: '#4b5563', whiteSpace: 'pre-wrap' }}>{record.extraNotes.trim()}</div>
+              </div>
+            )}
 
             {/* 操作按钮 */}
             <div className="action-buttons" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

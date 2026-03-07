@@ -7,6 +7,7 @@ import Cat from '@/components/Cat';
 import StartView from '@/components/assessment/StartView';
 import CardStack from '@/components/assessment/CardStack';
 import ImpactPicker from '@/components/assessment/ImpactPicker';
+import ExtraNotesView from '@/components/assessment/ExtraNotesView';
 import CompletionView from '@/components/assessment/CompletionView';
 import { SwipeDirection, CatGesture } from '@/types';
 
@@ -16,10 +17,13 @@ export default function HomePage() {
     currentIndex,
     view,
     catGesture,
+    extraNotes,
     startAssessment,
     handleSwipe,
     selectImpact,
-    setCatGesture,
+    updateExtraNotes,
+    submitExtraNotes,
+    skipExtraNotes,
   } = useAssessment();
 
   const [localCatGesture, setLocalCatGesture] = useState<CatGesture>('');
@@ -61,6 +65,15 @@ export default function HomePage() {
         )}
 
         {view === 'impact' && <ImpactPicker onSelect={selectImpact} />}
+
+        {view === 'extraNotes' && (
+          <ExtraNotesView
+            notes={extraNotes}
+            onChange={updateExtraNotes}
+            onSkip={skipExtraNotes}
+            onSubmit={submitExtraNotes}
+          />
+        )}
 
         {view === 'completion' && <CompletionView />}
       </div>

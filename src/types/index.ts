@@ -53,6 +53,7 @@ export interface AssessmentRecord {
   duration: string;
   diagnosis: Diagnosis;
   responses: Responses;
+  extraNotes?: string;
 }
 
 // 持续时间选项

@@ -13,8 +13,9 @@ interface AssessmentContextType {
   currentIndex: number;
   responses: Responses;
   impactLevel: ImpactLevel | null;
+  extraNotes: string;
   catGesture: CatGesture;
-  view: 'start' | 'card' | 'impact' | 'completion';
+  view: 'start' | 'card' | 'impact' | 'extraNotes' | 'completion';
   hasNewAssessment: boolean;
   viewingHistoryIndex: number | undefined;
   isDoctorMode: boolean;
@@ -24,6 +25,9 @@ interface AssessmentContextType {
   resetAssessment: () => void;
   handleSwipe: (direction: 'left' | 'right' | 'up' | 'down') => void;
   selectImpact: (level: ImpactLevel) => void;
+  updateExtraNotes: (notes: string) => void;
+  submitExtraNotes: () => void;
+  skipExtraNotes: () => void;
   setCatGesture: (gesture: CatGesture) => void;
   setViewingHistoryIndex: (index: number | undefined) => void;
   setIsDoctorMode: (mode: boolean) => void;
@@ -37,8 +41,9 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<Responses>({});
   const [impactLevel, setImpactLevel] = useState<ImpactLevel | null>(null);
+  const [extraNotes, setExtraNotes] = useState('');
   const [catGesture, setCatGesture] = useState<CatGesture>('');
-  const [view, setView] = useState<'start' | 'card' | 'impact' | 'completion'>('start');
+  const [view, setView] = useState<'start' | 'card' | 'impact' | 'extraNotes' | 'completion'>('start');
   const [hasNewAssessment, setHasNewAssessment] = useState(false);
   const [viewingHistoryIndex, setViewingHistoryIndex] = useState<number | undefined>(undefined);
   const [isDoctorMode, setIsDoctorMode] = useState(false);
@@ -47,6 +52,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     setCurrentIndex(0);
     setResponses({});
     setImpactLevel(null);
+    setExtraNotes('');
     setView('card');
   }, []);
 
@@ -55,6 +61,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     setCurrentIndex(0);
     setResponses({});
     setImpactLevel(null);
+    setExtraNotes('');
   }, []);
 
   const handleSwipe = useCallback((direction: 'left' | 'right' | 'up' | 'down') => {
@@ -83,11 +90,17 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
 
   const selectImpact = useCallback((level: ImpactLevel) => {
     setImpactLevel(level);
-    setView('completion');
+    setView('extraNotes');
+  }, []);
+
+  const finalizeAssessment = useCallback((notes?: string) => {
+    if (!impactLevel) return;
+
+    const normalizedNotes = notes?.trim();
 
     // 璁＄畻缁撴灉骞朵繚瀛?
     const symptoms = calculateSymptoms(responses);
-    const severity = calculateSeverity(responses, impactLevels[level].value);
+    const severity = calculateSeverity(responses, impactLevels[impactLevel].value);
     const summary = generateSummary(symptoms);
     const diagnosis = diagnoseADHD(responses);
 
@@ -100,11 +113,26 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
       duration: 'threeMonths',
       diagnosis,
       responses: { ...responses },
+      extraNotes: normalizedNotes || undefined,
     };
 
     addRecord(record);
     setHasNewAssessment(true);
-  }, [responses]);
+    setView('completion');
+  }, [impactLevel, responses]);
+
+  const updateExtraNotes = useCallback((notes: string) => {
+    setExtraNotes(notes);
+  }, []);
+
+  const submitExtraNotes = useCallback(() => {
+    finalizeAssessment(extraNotes);
+  }, [extraNotes, finalizeAssessment]);
+
+  const skipExtraNotes = useCallback(() => {
+    setExtraNotes('');
+    finalizeAssessment(undefined);
+  }, [finalizeAssessment]);
 
   const getRecords = useCallback(() => {
     return loadRecords();
@@ -116,6 +144,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
         currentIndex,
         responses,
         impactLevel,
+        extraNotes,
         catGesture,
         view,
         hasNewAssessment,
@@ -125,6 +154,9 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
         resetAssessment,
         handleSwipe,
         selectImpact,
+        updateExtraNotes,
+        submitExtraNotes,
+        skipExtraNotes,
         setCatGesture,
         setViewingHistoryIndex,
         setIsDoctorMode,
