@@ -98,7 +98,7 @@ export default function SummaryPage() {
   };
 
   // 计算各维度数据
-  const { categoryScores, dimScores, radarScores, top3Pain } = useMemo(() => {
+  const { categoryScores, dimScores, radarScores, top3Pain, suspicionPercent } = useMemo(() => {
     const defaultDimScores: DimScoresType = {
       '注意缺陷': 0,
       '多动冲动': 0,
@@ -182,7 +182,16 @@ export default function SummaryPage() {
     });
     const top3Pain = painPoints.sort((a, b) => b.weight - a.weight).slice(0, 3);
 
-    return { categoryScores, dimScores, radarScores, top3Pain };
+    // 计算 ADHD 疑似度百分比（加权综合）
+    const suspicionPercent = Math.min(100, Math.round(
+      radarScores.attention * 0.30 +
+      radarScores.hyperactive * 0.30 +
+      radarScores.executive * 0.15 +
+      radarScores.development * 0.15 +
+      radarScores.impairment * 0.10
+    ));
+
+    return { categoryScores, dimScores, radarScores, top3Pain, suspicionPercent };
   }, [record, responses]);
 
   // 生成雷达图
@@ -453,6 +462,33 @@ export default function SummaryPage() {
         {/* ========== 个人模式内容 ========== */}
         {!isDoctorMode && (
           <>
+            {/* ADHD 疑似度 */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '2px', borderLeft: '3px solid #f59e0b', paddingLeft: '12px' }}>ADHD 疑似度</h3>
+              <div style={{ padding: '24px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 16px' }}>
+                  <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="#e5e7eb" strokeWidth="10" />
+                    <circle
+                      cx="60" cy="60" r="50" fill="none"
+                      stroke={suspicionPercent >= 70 ? '#ef4444' : suspicionPercent >= 40 ? '#f59e0b' : '#10b981'}
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                      strokeDasharray={`${suspicionPercent * 3.14} 314`}
+                      transform="rotate(-90 60 60)"
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+                    <div style={{ fontSize: '28px', fontWeight: 800, color: suspicionPercent >= 70 ? '#ef4444' : suspicionPercent >= 40 ? '#f59e0b' : '#10b981' }}>{suspicionPercent}%</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: '14px', color: '#64748b' }}>
+                  {suspicionPercent >= 70 ? '建议尽快就医评估' : suspicionPercent >= 40 ? '存在一定可能，建议关注' : '疑似度较低'}
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>基于五十道题的综合评估，仅供参考</div>
+              </div>
+            </div>
+
             {/* AI 分析区域 */}
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '2px', borderLeft: '3px solid #8b5cf6', paddingLeft: '12px' }}>🤖 AI 分析</h3>
