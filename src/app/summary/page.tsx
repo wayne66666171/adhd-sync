@@ -116,7 +116,7 @@ export default function SummaryPage() {
     };
 
     if (!record || !responses) {
-      return { categoryScores: {}, dimScores: defaultDimScores, radarScores: defaultRadarScores, top3Pain: [] };
+      return { categoryScores: {}, dimScores: defaultDimScores, radarScores: defaultRadarScores, top3Pain: [], suspicionPercent: 0 };
     }
 
     const categoryScores: Record<string, number> = {};
