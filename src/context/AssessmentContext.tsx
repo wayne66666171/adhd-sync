@@ -3,10 +3,21 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { Responses, ImpactLevel, AssessmentRecord, CatGesture, impactLevels } from '@/types';
 import { questions } from '@/data/questions';
-import { diagnoseADHD, calculateSymptoms, calculateSeverity, generateSummary } from '@/lib/diagnosis';
+import {
+  diagnoseADHD,
+  calculateSymptoms,
+  calculateSeverity,
+  generateSummary,
+  QUICK_SCREENING_QUESTION_COUNT,
+} from '@/lib/diagnosis';
 import { addRecord, loadRecords } from '@/lib/storage';
 
 const CAT_GESTURE_RESET_MS = 120;
+const quickQuestionIds = new Set(
+  questions.slice(0, QUICK_SCREENING_QUESTION_COUNT).map((question) => question.id),
+);
+
+type AssessmentView = 'start' | 'card' | 'quickResult' | 'impact' | 'extraNotes' | 'completion';
 
 interface AssessmentContextType {
   // 鐘舵€?
@@ -15,7 +26,7 @@ interface AssessmentContextType {
   impactLevel: ImpactLevel | null;
   extraNotes: string;
   catGesture: CatGesture;
-  view: 'start' | 'card' | 'impact' | 'extraNotes' | 'completion';
+  view: AssessmentView;
   hasNewAssessment: boolean;
   viewingHistoryIndex: number | undefined;
   isDoctorMode: boolean;
@@ -24,6 +35,9 @@ interface AssessmentContextType {
   startAssessment: () => void;
   resetAssessment: () => void;
   handleSwipe: (direction: 'left' | 'right' | 'up' | 'down') => void;
+  enterQuickResult: () => void;
+  evaluateNowWithCurrentAnswers: () => void;
+  continueAssessment: () => void;
   selectImpact: (level: ImpactLevel) => void;
   updateExtraNotes: (notes: string) => void;
   submitExtraNotes: () => void;
@@ -43,7 +57,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
   const [impactLevel, setImpactLevel] = useState<ImpactLevel | null>(null);
   const [extraNotes, setExtraNotes] = useState('');
   const [catGesture, setCatGesture] = useState<CatGesture>('');
-  const [view, setView] = useState<'start' | 'card' | 'impact' | 'extraNotes' | 'completion'>('start');
+  const [view, setView] = useState<AssessmentView>('start');
   const [hasNewAssessment, setHasNewAssessment] = useState(false);
   const [viewingHistoryIndex, setViewingHistoryIndex] = useState<number | undefined>(undefined);
   const [isDoctorMode, setIsDoctorMode] = useState(false);
@@ -62,6 +76,27 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     setResponses({});
     setImpactLevel(null);
     setExtraNotes('');
+  }, []);
+
+  const enterQuickResult = useCallback(() => {
+    setView((prev) => (prev === 'card' ? 'quickResult' : prev));
+  }, []);
+
+  const evaluateNowWithCurrentAnswers = useCallback(() => {
+    setResponses((prev) => {
+      const quickResponses: Responses = {};
+      Object.entries(prev).forEach(([questionId, answer]) => {
+        if (quickQuestionIds.has(Number(questionId))) {
+          quickResponses[Number(questionId)] = answer;
+        }
+      });
+      return quickResponses;
+    });
+    setView('impact');
+  }, []);
+
+  const continueAssessment = useCallback(() => {
+    setView('card');
   }, []);
 
   const handleSwipe = useCallback((direction: 'left' | 'right' | 'up' | 'down') => {
@@ -153,6 +188,9 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
         startAssessment,
         resetAssessment,
         handleSwipe,
+        enterQuickResult,
+        evaluateNowWithCurrentAnswers,
+        continueAssessment,
         selectImpact,
         updateExtraNotes,
         submitExtraNotes,

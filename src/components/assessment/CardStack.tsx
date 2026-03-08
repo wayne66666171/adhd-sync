@@ -6,20 +6,27 @@ import { questions } from '@/data/questions';
 import SnakeProgress from './SnakeProgress';
 
 const SWIPE_COMMIT_DELAY_MS = 140;
+const QUICK_RESULT_TRIGGER_INDEX = 14;
 
 interface CardStackProps {
   currentIndex: number;
   onSwipe: (direction: SwipeDirection) => void;
   onDragging: (direction: SwipeDirection | null) => void;
+  onQuickResultRequested: () => void;
 }
 
-export default function CardStack({ currentIndex, onSwipe, onDragging }: CardStackProps) {
+export default function CardStack({
+  currentIndex,
+  onSwipe,
+  onDragging,
+  onQuickResultRequested,
+}: CardStackProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const swipeTimerRef = useRef<number | null>(null);
   const [slideClass, setSlideClass] = useState('');
   const [overlay, setOverlay] = useState<SwipeDirection | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // 使用 ref 存储拖拽状态，避免频繁重渲染
   const dragState = useRef({
     isDragging: false,
     startX: 0,
@@ -28,14 +35,10 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
     currentY: 0,
   });
 
-  // 用于强制更新卡片位置的状态
-  const [, forceUpdate] = useState(0);
-
-  // RAF 节流
   const rafRef = useRef<number | null>(null);
   const lastOverlay = useRef<SwipeDirection | null>(null);
 
-  const progress = ((currentIndex) / questions.length) * 100;
+  const progress = (currentIndex / questions.length) * 100;
 
   const handleStart = useCallback((clientX: number, clientY: number) => {
     dragState.current = {
@@ -45,55 +48,50 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
       currentX: 0,
       currentY: 0,
     };
-    forceUpdate(n => n + 1);
+    setIsDragging(true);
   }, []);
 
-  const handleMove = useCallback((clientX: number, clientY: number) => {
-    if (!dragState.current.isDragging) return;
+  const handleMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!dragState.current.isDragging) return;
 
-    const x = clientX - dragState.current.startX;
-    const y = clientY - dragState.current.startY;
+      const x = clientX - dragState.current.startX;
+      const y = clientY - dragState.current.startY;
 
-    dragState.current.currentX = x;
-    dragState.current.currentY = y;
+      dragState.current.currentX = x;
+      dragState.current.currentY = y;
 
-    // 使用 RAF 节流更新
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-    }
-
-    rafRef.current = requestAnimationFrame(() => {
-      // 直接操作 DOM 更新 transform，避免 React 重渲染
-      if (cardRef.current) {
-        cardRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${x / 20}deg)`;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
       }
 
-      // 计算 overlay 方向
-      let newOverlay: SwipeDirection | null = null;
-      if (x > 50) {
-        newOverlay = 'right';
-      } else if (x < -50) {
-        newOverlay = 'left';
-      } else if (y < -50) {
-        newOverlay = 'up';
-      } else if (y > 50) {
-        newOverlay = 'down';
-      }
+      rafRef.current = requestAnimationFrame(() => {
+        if (cardRef.current) {
+          cardRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${x / 20}deg)`;
+        }
 
-      // 只在 overlay 变化时更新状态
-      if (newOverlay !== lastOverlay.current) {
-        lastOverlay.current = newOverlay;
-        setOverlay(newOverlay);
-        onDragging(newOverlay);
-      }
-    });
-  }, [onDragging]);
+        let newOverlay: SwipeDirection | null = null;
+        if (x > 50) newOverlay = 'right';
+        else if (x < -50) newOverlay = 'left';
+        else if (y < -50) newOverlay = 'up';
+        else if (y > 50) newOverlay = 'down';
+
+        if (newOverlay !== lastOverlay.current) {
+          lastOverlay.current = newOverlay;
+          setOverlay(newOverlay);
+          onDragging(newOverlay);
+        }
+      });
+    },
+    [onDragging],
+  );
 
   const handleEnd = useCallback(() => {
     if (!dragState.current.isDragging) return;
 
     const { currentX: x, currentY: y } = dragState.current;
     dragState.current.isDragging = false;
+    setIsDragging(false);
 
     const commitSwipe = (direction: SwipeDirection, exitClass: string) => {
       setSlideClass(exitClass);
@@ -104,8 +102,16 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
       if (swipeTimerRef.current) {
         window.clearTimeout(swipeTimerRef.current);
       }
+
       swipeTimerRef.current = window.setTimeout(() => {
         onSwipe(direction);
+        if (currentIndex === QUICK_RESULT_TRIGGER_INDEX) {
+          onQuickResultRequested();
+        }
+        setSlideClass('');
+        if (cardRef.current) {
+          cardRef.current.style.transform = '';
+        }
       }, SWIPE_COMMIT_DELAY_MS);
     };
 
@@ -122,7 +128,6 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
     } else if (y > 80) {
       commitSwipe('down', 'slide-down');
     } else {
-      // 重置卡片位置
       if (cardRef.current) {
         cardRef.current.style.transform = '';
       }
@@ -130,11 +135,8 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
       onDragging(null);
       lastOverlay.current = null;
     }
+  }, [currentIndex, onSwipe, onDragging, onQuickResultRequested]);
 
-    forceUpdate(n => n + 1);
-  }, [onSwipe, onDragging]);
-
-  // 当切换到下一题时，重置卡片状态
   useEffect(() => {
     dragState.current = {
       isDragging: false,
@@ -143,40 +145,43 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
       currentX: 0,
       currentY: 0,
     };
+
     if (swipeTimerRef.current) {
       window.clearTimeout(swipeTimerRef.current);
       swipeTimerRef.current = null;
     }
-    setOverlay(null);
-    setSlideClass('');
+
     lastOverlay.current = null;
+
     if (cardRef.current) {
       cardRef.current.style.transform = '';
     }
   }, [currentIndex]);
 
-  // Keyboard support
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        e.preventDefault();
-        const direction = e.key.replace('Arrow', '').toLowerCase() as SwipeDirection;
-        onSwipe(direction);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+
+      event.preventDefault();
+      const direction = event.key.replace('Arrow', '').toLowerCase() as SwipeDirection;
+      onSwipe(direction);
+
+      if (currentIndex === QUICK_RESULT_TRIGGER_INDEX) {
+        onQuickResultRequested();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSwipe]);
+  }, [currentIndex, onSwipe, onQuickResultRequested]);
 
-  // 触摸事件处理 - 使用 passive: false 以便调用 preventDefault
   useEffect(() => {
     const card = cardRef.current;
     if (!card) return;
 
-    const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault(); // 防止页面滚动
-      handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    const onTouchMove = (event: TouchEvent) => {
+      event.preventDefault();
+      handleMove(event.touches[0].clientX, event.touches[0].clientY);
     };
 
     card.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -185,7 +190,6 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
     };
   }, [handleMove, currentIndex]);
 
-  // 清理 RAF
   useEffect(() => {
     return () => {
       if (rafRef.current) {
@@ -197,80 +201,83 @@ export default function CardStack({ currentIndex, onSwipe, onDragging }: CardSta
     };
   }, []);
 
-  const isDragging = dragState.current.isDragging;
-
-  // 使用 useMemo 缓存卡片渲染
   const cards = useMemo(() => {
     const result = [];
-    for (let i = Math.min(2, questions.length - currentIndex - 1); i >= 0; i--) {
+
+    for (let i = Math.min(2, questions.length - currentIndex - 1); i >= 0; i -= 1) {
       const qIndex = currentIndex + i;
-      if (qIndex < questions.length) {
-        const q = questions[qIndex];
-        const isTop = i === 0;
+      if (qIndex >= questions.length) continue;
 
-        result.push(
-          <div
-            key={q.id}
-            ref={isTop ? cardRef : undefined}
-            className={`card ${isDragging && isTop ? 'dragging' : ''} ${isTop ? slideClass : ''}`}
-            style={{
-              zIndex: 10 - i,
-              transform: isTop
-                ? undefined // 由 JS 直接控制
-                : `scale(${1 - i * 0.05}) translateY(${-i * 10}px)`,
-              opacity: isTop ? 1 : 0.8,
-              willChange: isTop ? 'transform' : undefined,
-            }}
-            onMouseDown={isTop ? (e) => {
-              e.preventDefault();
-              handleStart(e.clientX, e.clientY);
-            } : undefined}
-            onMouseMove={isTop ? (e) => handleMove(e.clientX, e.clientY) : undefined}
-            onMouseUp={isTop ? handleEnd : undefined}
-            onMouseLeave={isTop ? handleEnd : undefined}
-            onTouchStart={isTop ? (e) => handleStart(e.touches[0].clientX, e.touches[0].clientY) : undefined}
-            onTouchEnd={isTop ? handleEnd : undefined}
-          >
-            <span className="card-category">{q.category}</span>
-            <div className="card-question">{q.question}</div>
-            {q.desc && <div className="card-description">{q.desc}</div>}
+      const question = questions[qIndex];
+      const isTop = i === 0;
 
-            {isTop && (
-              <>
-                <div className={`card-overlay yes ${overlay === 'right' ? 'show' : ''}`}>
-                  <span className="card-overlay-icon">已记录</span>
-                </div>
-                <div className={`card-overlay no ${overlay === 'left' ? 'show' : ''}`}>
-                  <span className="card-overlay-icon">未出现</span>
-                </div>
-                <div className={`card-overlay skip ${overlay === 'up' ? 'show' : ''}`}>
-                  <span className="card-overlay-icon">极严重</span>
-                </div>
-                <div className={`card-overlay uncertain ${overlay === 'down' ? 'show' : ''}`}>
-                  <span className="card-overlay-icon">不确定</span>
-                </div>
-              </>
-            )}
-          </div>
-        );
-      }
+      result.push(
+        <div
+          key={question.id}
+          ref={isTop ? cardRef : undefined}
+          className={`card ${isDragging && isTop ? 'dragging' : ''} ${isTop ? slideClass : ''}`}
+          style={{
+            zIndex: 10 - i,
+            transform: isTop ? undefined : `scale(${1 - i * 0.05}) translateY(${-i * 10}px)`,
+            opacity: isTop ? 1 : 0.8,
+            willChange: isTop ? 'transform' : undefined,
+          }}
+          onMouseDown={
+            isTop
+              ? (event) => {
+                  event.preventDefault();
+                  handleStart(event.clientX, event.clientY);
+                }
+              : undefined
+          }
+          onMouseMove={isTop ? (event) => handleMove(event.clientX, event.clientY) : undefined}
+          onMouseUp={isTop ? handleEnd : undefined}
+          onMouseLeave={isTop ? handleEnd : undefined}
+          onTouchStart={
+            isTop
+              ? (event) => handleStart(event.touches[0].clientX, event.touches[0].clientY)
+              : undefined
+          }
+          onTouchEnd={isTop ? handleEnd : undefined}
+        >
+          <span className="card-category">{question.category}</span>
+          <div className="card-question">{question.question}</div>
+          {question.desc && <div className="card-description">{question.desc}</div>}
+
+          {isTop && (
+            <>
+              <div className={`card-overlay yes ${overlay === 'right' ? 'show' : ''}`}>
+                <span className="card-overlay-icon">有明显表现</span>
+              </div>
+              <div className={`card-overlay no ${overlay === 'left' ? 'show' : ''}`}>
+                <span className="card-overlay-icon">没有出现</span>
+              </div>
+              <div className={`card-overlay skip ${overlay === 'up' ? 'show' : ''}`}>
+                <span className="card-overlay-icon">极严重</span>
+              </div>
+              <div className={`card-overlay uncertain ${overlay === 'down' ? 'show' : ''}`}>
+                <span className="card-overlay-icon">不确定</span>
+              </div>
+            </>
+          )}
+        </div>,
+      );
     }
+
     return result;
-  }, [currentIndex, isDragging, slideClass, overlay, handleStart, handleMove, handleEnd]);
+  }, [currentIndex, handleEnd, handleMove, handleStart, isDragging, overlay, slideClass]);
 
   return (
     <div>
       <div className="progress-container">
         <SnakeProgress currentIndex={currentIndex} total={questions.length} />
         <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="progress-text">第 {currentIndex + 1} 题 / 共 {questions.length} 题</div>
       </div>
 
-      <div className="card-container">
-        {cards}
-      </div>
+      <div className="card-container">{cards}</div>
 
       <div className="swipe-indicators">
         <div className="indicator">

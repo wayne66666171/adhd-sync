@@ -6,6 +6,7 @@ import { useAssessment } from '@/context/AssessmentContext';
 import Cat from '@/components/Cat';
 import StartView from '@/components/assessment/StartView';
 import CardStack from '@/components/assessment/CardStack';
+import QuickResultView from '@/components/assessment/QuickResultView';
 import ImpactPicker from '@/components/assessment/ImpactPicker';
 import ExtraNotesView from '@/components/assessment/ExtraNotesView';
 import CompletionView from '@/components/assessment/CompletionView';
@@ -17,9 +18,13 @@ export default function HomePage() {
     currentIndex,
     view,
     catGesture,
+    responses,
     extraNotes,
     startAssessment,
     handleSwipe,
+    enterQuickResult,
+    evaluateNowWithCurrentAnswers,
+    continueAssessment,
     selectImpact,
     updateExtraNotes,
     submitExtraNotes,
@@ -61,6 +66,15 @@ export default function HomePage() {
             currentIndex={currentIndex}
             onSwipe={handleSwipe}
             onDragging={onDragging}
+            onQuickResultRequested={enterQuickResult}
+          />
+        )}
+
+        {view === 'quickResult' && (
+          <QuickResultView
+            responses={responses}
+            onEvaluateNow={evaluateNowWithCurrentAnswers}
+            onContinue={continueAssessment}
           />
         )}
 

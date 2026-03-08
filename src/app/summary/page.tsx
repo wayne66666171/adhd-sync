@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAssessment } from '@/context/AssessmentContext';
 import { loadRecords, getDoctorMode, setDoctorMode as saveDoctorMode } from '@/lib/storage';
@@ -17,6 +17,7 @@ export default function SummaryPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [factIndex, setFactIndex] = useState(0);
+  const hasAutoTriggeredAIRef = useRef(false);
 
   // ADHD 趣味小知识
   const adhdFacts = [
@@ -62,7 +63,7 @@ export default function SummaryPage() {
     router.push('/history');
   };
 
-  const generateAIAnalysis = async () => {
+  const generateAIAnalysis = useCallback(async () => {
     if (!record) return;
     setAiLoading(true);
     setAiContent('');
@@ -78,7 +79,17 @@ export default function SummaryPage() {
       setAiContent(`⚠️ ${result.error}`);
     }
     setAiLoading(false);
-  };
+  }, [record, responses, isDoctorMode]);
+
+  useEffect(() => {
+    if (isDoctorMode) return;
+    if (hasAutoTriggeredAIRef.current) return;
+    if (!record || !responses) return;
+    if (Object.keys(responses).length === 0) return;
+
+    hasAutoTriggeredAIRef.current = true;
+    void generateAIAnalysis();
+  }, [record, responses, isDoctorMode, generateAIAnalysis]);
 
   // 定义维度分数类型
   type DimScoresType = {
@@ -559,9 +570,7 @@ export default function SummaryPage() {
                   </>
                 ) : (
                   <div style={{ textAlign: 'center' }}>
-                    <button className="ai-generate-btn" onClick={generateAIAnalysis} style={{ padding: '14px 28px', background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 14px rgba(139, 92, 246, 0.35)' }}>
-                      ✨ 生成 AI 分析
-                    </button>
+                    <p style={{ marginTop: '4px', fontSize: '14px', color: '#64748B' }}>AI 将在数据准备完成后自动开始分析...</p>
                     <p style={{ marginTop: '12px', fontSize: '13px', color: '#64748B' }}>AI 将根据你的回答生成个性化分析与建议</p>
                   </div>
                 )}
