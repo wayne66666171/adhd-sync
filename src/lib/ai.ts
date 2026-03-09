@@ -84,6 +84,10 @@ B组(多动-冲动)得分: ${record.diagnosis.hyperactiveScore}/9
 家族史人数: ${record.diagnosis.familyHistory}`
     : '';
 
+  const extraNotesSection = record.extraNotes?.trim()
+    ? `\n用户补充说明（请在分析中结合这些自述）：\n${record.extraNotes.trim().slice(0, 500)}`
+    : '';
+
   if (isDoctorMode) {
     return `这是一份 ADHD 自评问卷结果，请以专业医生的视角进行分析。
 
@@ -91,7 +95,7 @@ ${diagnosisInfo}
 
 ${countSummary}
 以下为非"没有"的回答详情:
-${positiveAnswers.join('\n')}
+${positiveAnswers.join('\n')}${extraNotesSection}
 
 请提供:
 1. DSM-5 诊断标准符合情况分析
@@ -108,7 +112,7 @@ ${diagnosisInfo}
 
 ${countSummary}
 以下为非”没有”的回答详情:
-${positiveAnswers.join('\n')}
+${positiveAnswers.join('\n')}${extraNotesSection}
 
 请严格按以下结构输出（必须包含所有部分）：
 1. 你的回答模式

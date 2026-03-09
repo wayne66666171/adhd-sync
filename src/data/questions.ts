@@ -4,7 +4,7 @@ export const questions: Question[] = [
   // ==================== DSM-5 注意力不集中症状 (9项) ====================
   { id: 1, category: '注意力不集中', question: '在工作或活动中经常忽略细节，犯粗心的错误？', desc: '如校对文档时遗漏错误' },
   { id: 2, category: '注意力不集中', question: '完成任务或活动时经常有困难？', desc: '难以保持专注，容易走神' },
-  { id: 3, category: '注意力不集中', question: '当你直接对你说话时，你经常像没听见？', desc: '似乎心不在焉' },
+  { id: 3, category: '注意力不集中', question: '当别人直接对你说话时，你经常像没听见？', desc: '似乎心不在焉' },
   { id: 4, category: '注意力不集中', question: '经常不按照指示完成任务？', desc: '开始做但不能完成' },
   { id: 5, category: '注意力不集中', question: '经常在组织任务或活动时有困难？', desc: '不知道从哪里开始' },
   { id: 6, category: '注意力不集中', question: '经常逃避或不喜欢需要持续脑力努力的任务？', desc: '如做作业、准备报告' },
@@ -67,5 +67,5 @@ export const questions: Question[] = [
   { id: 49, category: '排除标准', question: '你是否经历过创伤事件或重大压力？', desc: '了解过往经历' },
 
   // ==================== 影响程度 (1项) ====================
-  { id: 50, category: '影响程度', question: '这些问题对你的生活影响有多大？', desc: '选择最符合你情况的选项' },
+  { id: 50, category: '影响程度', question: '这些问题对你的生活质量造成影响了吗？', desc: '选择最符合你情况的选项' },
 ];

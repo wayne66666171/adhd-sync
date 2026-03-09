@@ -513,6 +513,11 @@ export default function SummaryPage() {
                 <div style={{ fontSize: '14px', color: '#64748b' }}>
                   {suspicionPercent >= 70 ? '建议尽快就医评估' : suspicionPercent >= 40 ? '存在一定可能，建议关注' : '疑似度较低'}
                 </div>
+                {record?.diagnosis?.subtype && (
+                  <div style={{ display: 'inline-block', marginTop: '8px', padding: '4px 12px', borderRadius: '999px', background: suspicionPercent >= 70 ? '#fee2e2' : suspicionPercent >= 40 ? '#fef3c7' : '#d1fae5', color: suspicionPercent >= 70 ? '#dc2626' : suspicionPercent >= 40 ? '#d97706' : '#059669', fontSize: '12px', fontWeight: 700 }}>
+                    {record.diagnosis.subtype}
+                  </div>
+                )}
                 <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>基于五十道题的综合评估，仅供参考</div>
               </div>
             </div>
@@ -525,6 +530,7 @@ export default function SummaryPage() {
                   <div style={{ textAlign: 'center', padding: '24px' }}>
                     <div style={{ display: 'inline-block', width: '28px', height: '28px', border: '3px solid #8b5cf6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
                     <p style={{ marginTop: '12px', color: '#64748B', fontSize: '14px' }}>AI 正在分析中...</p>
+                    <p style={{ marginTop: '4px', color: '#94a3b8', fontSize: '12px' }}>只需要十秒左右，马上出炉！</p>
 
                     {/* 趣味小知识卡片 */}
                     <div style={{
