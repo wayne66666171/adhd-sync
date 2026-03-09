@@ -69,7 +69,8 @@ export function buildAIPrompt(record: AssessmentRecord, responses: Responses, is
     positiveAnswers.push(`[${q.category}] ${q.question} → ${status}`);
   });
 
-  const answeredSummary = noneCount > 0 ? `（另有 ${noneCount} 项选了"没有"）` : '';
+  const totalAnswered = positiveAnswers.length + noneCount;
+  const countSummary = `共 ${totalAnswered} 项回答：极严重 ${positiveAnswers.filter(a => a.endsWith('极严重')).length} 项、有 ${positiveAnswers.filter(a => a.endsWith('有')).length} 项、不确定 ${positiveAnswers.filter(a => a.endsWith('不确定')).length} 项、没有 ${noneCount} 项`;
 
   const diagnosisInfo = record.diagnosis
     ? `
@@ -88,7 +89,8 @@ B组(多动-冲动)得分: ${record.diagnosis.hyperactiveScore}/9
 
 ${diagnosisInfo}
 
-阳性回答详情 ${answeredSummary}:
+${countSummary}
+以下为非"没有"的回答详情:
 ${positiveAnswers.join('\n')}
 
 请提供:
@@ -104,12 +106,13 @@ ${positiveAnswers.join('\n')}
 
 ${diagnosisInfo}
 
-阳性回答 ${answeredSummary}:
+${countSummary}
+以下为非”没有”的回答详情:
 ${positiveAnswers.join('\n')}
 
 请严格按以下结构输出（必须包含所有部分）：
 1. 你的回答模式
-统计各选项数量，指出”极严重”集中在哪些领域。
+先写”共X项回答，其中极严重X项、有X项、不确定X项、没有X项”（数字必须与上面的统计一致），再指出”极严重”集中在哪些领域。
 
 2. 值得注意的模式（核心部分）
 包含以下两个子段落，子标题必须一字不差照用，不得修改：
