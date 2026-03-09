@@ -615,6 +615,16 @@ export default function SummaryPage() {
           <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', fontSize: '14px', lineHeight: 1.8 }}>
             <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', paddingBottom: '8px', borderBottom: '2px solid #0f766e' }}>📋 就诊备忘录</h3>
 
+            {/* 核心痛点 */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: '8px' }}>【核心痛点】</div>
+              <div style={{ color: '#4b5563' }}>
+                {top3Pain.length > 0 ? top3Pain.map((p, i) => (
+                  <div key={i}>• {toStatement(p.question)}{p.weight === 2 ? '（严重）' : ''}</div>
+                )) : '无显著痛点'}
+              </div>
+            </div>
+
             {/* 主要症状 */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【主要症状】</div>
@@ -628,16 +638,6 @@ export default function SummaryPage() {
                   });
                   return symptoms.length > 0 ? symptoms.map((s, i) => <div key={i}>{s}</div>) : '无明显症状';
                 })()}
-              </div>
-            </div>
-
-            {/* 核心痛点 */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: '8px' }}>【核心痛点】</div>
-              <div style={{ color: '#4b5563' }}>
-                {top3Pain.length > 0 ? top3Pain.map((p, i) => (
-                  <div key={i}>• {toStatement(p.question)}{p.weight === 2 ? '（严重）' : ''}</div>
-                )) : '无显著痛点'}
               </div>
             </div>
 
