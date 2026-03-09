@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAssessment } from '@/context/AssessmentContext';
+import AIAnalysisView from '@/components/assessment/AIAnalysisView';
 import { loadRecords, getDoctorMode, setDoctorMode as saveDoctorMode } from '@/lib/storage';
 import { callAIStream, buildAIPrompt, getSystemPrompt } from '@/lib/ai';
 import { questions } from '@/data/questions';
@@ -520,7 +521,7 @@ export default function SummaryPage() {
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '2px', borderLeft: '3px solid #8b5cf6', paddingLeft: '12px' }}>🤖 AI 分析</h3>
               <div id="ai-analysis-content" style={{ padding: '20px', background: 'linear-gradient(135deg, #faf5ff 0%, #f0f9ff 100%)', borderRadius: '12px', fontSize: '14px', color: '#374151' }}>
-                {aiLoading && !aiContent ? (
+                {aiLoading ? (
                   <div style={{ textAlign: 'center', padding: '24px' }}>
                     <div style={{ display: 'inline-block', width: '28px', height: '28px', border: '3px solid #8b5cf6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
                     <p style={{ marginTop: '12px', color: '#64748B', fontSize: '14px' }}>AI 正在分析中...</p>
@@ -555,18 +556,10 @@ export default function SummaryPage() {
                   </div>
                 ) : aiContent ? (
                   <>
-                    <div style={{ lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: aiContent.replace(/\n/g, '<br/>') }} />
-                    {aiLoading && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', color: '#8b5cf6' }}>
-                        <div style={{ width: '16px', height: '16px', border: '2px solid #8b5cf6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                        <span style={{ fontSize: '13px' }}>正在输出...</span>
-                      </div>
-                    )}
-                    {!aiLoading && (
-                      <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', textAlign: 'right' }}>
-                        <button onClick={generateAIAnalysis} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#64748B' }}>🔄 重新生成</button>
-                      </div>
-                    )}
+                    <AIAnalysisView aiContent={aiContent} />
+                    <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', textAlign: 'right' }}>
+                      <button onClick={generateAIAnalysis} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#64748B' }}>🔄 重新生成</button>
+                    </div>
                   </>
                 ) : (
                   <div style={{ textAlign: 'center' }}>
