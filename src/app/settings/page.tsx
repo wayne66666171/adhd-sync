@@ -46,7 +46,7 @@ export default function SettingsPage() {
             </svg>
           </span>
           <div>
-            <div style={{ fontWeight: 600 }}>ADHD 同步助手</div>
+            <div style={{ fontWeight: 600 }}>LovingADHD 评测助手</div>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>v1.0.0</div>
           </div>
         </div>

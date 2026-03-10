@@ -13,7 +13,7 @@ export default function StartView({ onStart }: StartViewProps) {
           <path d="M9 8v8M15 8v8M12 8v8" opacity=".5"/>
         </svg>
       </div>
-      <h2>ADHD 同步助手</h2>
+      <h2>LovingADHD 评测助手</h2>
       <p>通过滑动卡片快速记录您的症状</p>
 
       <div className="swipe-guide">
