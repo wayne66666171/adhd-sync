@@ -7,6 +7,7 @@ import AIAnalysisView from '@/components/assessment/AIAnalysisView';
 import { loadRecords, getDoctorMode, setDoctorMode as saveDoctorMode } from '@/lib/storage';
 import { callAIStream, buildAIPrompt, getSystemPrompt } from '@/lib/ai';
 import { questions } from '@/data/questions';
+import { getDoctorsByProvince } from '@/data/doctors';
 import { AssessmentRecord, Responses } from '@/types';
 
 export default function SummaryPage() {
@@ -18,6 +19,9 @@ export default function SummaryPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [factIndex, setFactIndex] = useState(0);
+  const [doctorView, setDoctorView] = useState<'menu' | 'nearby' | 'memo'>('menu');
+  const [hoveredDoctorCard, setHoveredDoctorCard] = useState<'nearby' | 'memo' | null>(null);
+  const [pressedDoctorCard, setPressedDoctorCard] = useState<'nearby' | 'memo' | null>(null);
   const hasAutoTriggeredAIRef = useRef(false);
 
   // ADHD 趣味小知识
@@ -53,10 +57,23 @@ export default function SummaryPage() {
   const historyIndex = viewingHistoryIndex !== undefined ? viewingHistoryIndex : 0;
   const record = records[historyIndex];
   const responses = record?.responses || contextResponses;
+  const doctorsInSelectedProvince = useMemo(() => {
+    if (!record?.selectedProvince) return [];
+    return getDoctorsByProvince(record.selectedProvince);
+  }, [record?.selectedProvince]);
 
   const handleModeChange = (mode: boolean) => {
     setIsDoctorMode(mode);
+    if (mode) setDoctorView('menu');
     saveDoctorMode(mode);
+  };
+
+  const handleDoctorCardClick = (view: 'nearby' | 'memo') => {
+    setPressedDoctorCard(view);
+    setTimeout(() => {
+      setPressedDoctorCard(null);
+      setDoctorView(view);
+    }, 100);
   };
 
   const handleBack = () => {
@@ -612,108 +629,239 @@ export default function SummaryPage() {
 
         {/* ========== 医生模式内容 ========== */}
         {isDoctorMode && (
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', fontSize: '14px', lineHeight: 1.8 }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', paddingBottom: '8px', borderBottom: '2px solid #0f766e' }}>📋 就诊备忘录</h3>
-
-            {/* 核心痛点 */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: '8px' }}>【核心痛点】</div>
-              <div style={{ color: '#4b5563' }}>
-                {top3Pain.length > 0 ? top3Pain.map((p, i) => (
-                  <div key={i}>• {toStatement(p.question)}{p.weight === 2 ? '（严重）' : ''}</div>
-                )) : '无显著痛点'}
-              </div>
-            </div>
-
-            {/* 主要症状 */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【主要症状】</div>
-              <div style={{ color: '#4b5563' }}>
-                {(() => {
-                  const symptoms: string[] = [];
-                  questions.filter(q => q.category === '注意力不集中' || q.category === '多动-冲动').forEach(q => {
-                    const r = responses[q.id];
-                    if (r === 'up') symptoms.push(`• ${toStatement(q.question)}（严重）`);
-                    else if (r === 'right') symptoms.push(`• ${toStatement(q.question)}`);
-                  });
-                  return symptoms.length > 0 ? symptoms.map((s, i) => <div key={i}>{s}</div>) : '无明显症状';
-                })()}
-              </div>
-            </div>
-
-            {/* 时间线 */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【时间线】</div>
-              <div style={{ color: '#4b5563' }}>
-                <div>• 症状持续6个月以上：{record.diagnosis.durationMet ? '是' : '否'}</div>
-                <div>• 12岁之前出现症状：{record.diagnosis.onsetMet ? '是' : '否'}</div>
-              </div>
-            </div>
-
-            {/* 功能损害 */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【功能损害】</div>
-              <div style={{ color: '#4b5563' }}>
-                {(() => {
-                  const impacts: string[] = [];
-                  questions.filter(q => q.category === '功能损害').forEach(q => {
-                    const r = responses[q.id];
-                    if (r === 'up' || r === 'right') impacts.push(`• ${toStatement(q.question)}`);
-                  });
-                  return impacts.length > 0 ? impacts.map((s, i) => <div key={i}>{s}</div>) : '无明显功能损害';
-                })()}
-              </div>
-            </div>
-
-            {/* 家族史 */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【家族史】</div>
-              <div style={{ color: '#4b5563' }}>
-                {(() => {
-                  const family: string[] = [];
-                  questions.filter(q => q.category === '家族史').forEach(q => {
-                    const r = responses[q.id];
-                    let text = q.question.replace('？', '').replace(/^你的/g, '').replace('有无', '有');
-                    if (r === 'up' || r === 'right') family.push(`• ${text}`);
-                    else if (r === 'down') family.push(`• ${text}（可能）`);
-                  });
-                  return family.length > 0 ? family.map((s, i) => <div key={i}>{s}</div>) : '无相关家族史';
-                })()}
-              </div>
-            </div>
-
-            {/* 其他情况 */}
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【其他相关情况】</div>
-              <div style={{ color: '#4b5563' }}>
-                {(() => {
-                  const other: string[] = [];
-                  questions.filter(q => q.category === '排除标准' || q.category === '共病筛查').forEach(q => {
-                    const r = responses[q.id];
-                    let text = toStatement(q.question).replace('有无', '有').replace('有过', '有');
-                    if (r === 'up' || r === 'right') other.push(`• ${text}`);
-                    else if (r === 'down') other.push(`• ${text}（可能）`);
-                  });
-                  return other.length > 0 ? other.map((s, i) => <div key={i}>{s}</div>) : '无';
-                })()}
-              </div>
-            </div>
-
-            {record.extraNotes?.trim() && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【患者自述补充】</div>
-                <div style={{ color: '#4b5563', whiteSpace: 'pre-wrap' }}>{record.extraNotes.trim()}</div>
+          <>
+            {doctorView === 'menu' && (
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onMouseEnter={() => setHoveredDoctorCard('nearby')}
+                  onMouseLeave={() => setHoveredDoctorCard(null)}
+                  onMouseDown={() => setPressedDoctorCard('nearby')}
+                  onMouseUp={() => setPressedDoctorCard(null)}
+                  onTouchStart={() => setPressedDoctorCard('nearby')}
+                  onTouchEnd={() => setPressedDoctorCard(null)}
+                  onClick={() => handleDoctorCardClick('nearby')}
+                  style={{
+                    width: '50%',
+                    aspectRatio: '1 / 1',
+                    border: 'none',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    padding: '20px',
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #c084fc 100%)',
+                    color: 'white',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    boxShadow: hoveredDoctorCard === 'nearby' ? '0 14px 28px rgba(139, 92, 246, 0.32)' : '0 8px 20px rgba(139, 92, 246, 0.2)',
+                    transform: pressedDoctorCard === 'nearby' ? 'scale(0.97)' : (hoveredDoctorCard === 'nearby' ? 'scale(1.04)' : 'scale(1)'),
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                  }}
+                >
+                  <div style={{ fontSize: '40px', lineHeight: 1 }}>🗺️</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700 }}>附近ADHD医生</div>
+                </button>
+                <button
+                  type="button"
+                  onMouseEnter={() => setHoveredDoctorCard('memo')}
+                  onMouseLeave={() => setHoveredDoctorCard(null)}
+                  onMouseDown={() => setPressedDoctorCard('memo')}
+                  onMouseUp={() => setPressedDoctorCard(null)}
+                  onTouchStart={() => setPressedDoctorCard('memo')}
+                  onTouchEnd={() => setPressedDoctorCard(null)}
+                  onClick={() => handleDoctorCardClick('memo')}
+                  style={{
+                    width: '50%',
+                    aspectRatio: '1 / 1',
+                    border: 'none',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    padding: '20px',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #38bdf8 100%)',
+                    color: 'white',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    boxShadow: hoveredDoctorCard === 'memo' ? '0 14px 28px rgba(59, 130, 246, 0.32)' : '0 8px 20px rgba(59, 130, 246, 0.2)',
+                    transform: pressedDoctorCard === 'memo' ? 'scale(0.97)' : (hoveredDoctorCard === 'memo' ? 'scale(1.04)' : 'scale(1)'),
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                  }}
+                >
+                  <div style={{ fontSize: '40px', lineHeight: 1 }}>📋</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700 }}>就诊备忘录</div>
+                </button>
               </div>
             )}
 
-            {/* 操作按钮 */}
-            <div className="action-buttons" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button onClick={copyMemoToClipboard} style={{ padding: '8px 16px', background: copySuccess ? '#10b981' : '#0f766e', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', transition: 'background 0.2s' }}>
-                {copySuccess ? '✓ 已复制' : '📋 复制文本'}
-              </button>
-              <button onClick={() => window.print()} style={{ padding: '8px 16px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>🖨️ 打印 PDF</button>
-            </div>
-          </div>
+            {doctorView === 'nearby' && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
+                <button
+                  type="button"
+                  onClick={() => setDoctorView('menu')}
+                  style={{ border: 'none', background: 'transparent', color: '#334155', cursor: 'pointer', padding: 0, fontSize: '14px', fontWeight: 600, marginBottom: '14px' }}
+                >
+                  ← 返回
+                </button>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '14px' }}>附近ADHD医生</h3>
+                {record.selectedProvince ? (
+                  doctorsInSelectedProvince.length > 0 ? (
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {doctorsInSelectedProvince.map((doctor, index) => (
+                        <div
+                          key={`${doctor.hospital}-${doctor.department}-${index}`}
+                          style={{ padding: '14px 16px', borderRadius: '12px', background: '#ffffff', border: '1px solid #e2e8f0' }}
+                        >
+                          <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{doctor.hospital}</div>
+                          <div style={{ marginTop: '6px', fontSize: '13px', color: '#475569' }}>{doctor.city} · {doctor.department}</div>
+                          {doctor.notes && <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>{doctor.notes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '16px', borderRadius: '12px', background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                      <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>暂无该地区社群数据</p>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                        <a
+                          href="https://www.haodf.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #0f766e', color: '#0f766e', textDecoration: 'none', fontSize: '13px', fontWeight: 600, background: '#fff' }}
+                        >
+                          好大夫在线
+                        </a>
+                        <a
+                          href="https://jk.jd.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #0f766e', color: '#0f766e', textDecoration: 'none', fontSize: '13px', fontWeight: 600, background: '#fff' }}
+                        >
+                          京东健康
+                        </a>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div style={{ padding: '16px', borderRadius: '12px', background: '#ffffff', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '14px' }}>
+                    完成评估时未选择省份
+                  </div>
+                )}
+              </div>
+            )}
+
+            {doctorView === 'memo' && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', fontSize: '14px', lineHeight: 1.8 }}>
+                <button
+                  type="button"
+                  onClick={() => setDoctorView('menu')}
+                  style={{ border: 'none', background: 'transparent', color: '#334155', cursor: 'pointer', padding: 0, fontSize: '14px', fontWeight: 600, marginBottom: '14px' }}
+                >
+                  ← 返回
+                </button>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', paddingBottom: '8px', borderBottom: '2px solid #0f766e' }}>📋 就诊备忘录</h3>
+
+                {/* 核心痛点 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontWeight: 600, color: '#ef4444', marginBottom: '8px' }}>【核心痛点】</div>
+                  <div style={{ color: '#4b5563' }}>
+                    {top3Pain.length > 0 ? top3Pain.map((p, i) => (
+                      <div key={i}>• {toStatement(p.question)}{p.weight === 2 ? '（严重）' : ''}</div>
+                    )) : '无显著痛点'}
+                  </div>
+                </div>
+
+                {/* 主要症状 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【主要症状】</div>
+                  <div style={{ color: '#4b5563' }}>
+                    {(() => {
+                      const symptoms: string[] = [];
+                      questions.filter(q => q.category === '注意力不集中' || q.category === '多动-冲动').forEach(q => {
+                        const r = responses[q.id];
+                        if (r === 'up') symptoms.push(`• ${toStatement(q.question)}（严重）`);
+                        else if (r === 'right') symptoms.push(`• ${toStatement(q.question)}`);
+                      });
+                      return symptoms.length > 0 ? symptoms.map((s, i) => <div key={i}>{s}</div>) : '无明显症状';
+                    })()}
+                  </div>
+                </div>
+
+                {/* 时间线 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【时间线】</div>
+                  <div style={{ color: '#4b5563' }}>
+                    <div>• 症状持续6个月以上：{record.diagnosis.durationMet ? '是' : '否'}</div>
+                    <div>• 12岁之前出现症状：{record.diagnosis.onsetMet ? '是' : '否'}</div>
+                  </div>
+                </div>
+
+                {/* 功能损害 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【功能损害】</div>
+                  <div style={{ color: '#4b5563' }}>
+                    {(() => {
+                      const impacts: string[] = [];
+                      questions.filter(q => q.category === '功能损害').forEach(q => {
+                        const r = responses[q.id];
+                        if (r === 'up' || r === 'right') impacts.push(`• ${toStatement(q.question)}`);
+                      });
+                      return impacts.length > 0 ? impacts.map((s, i) => <div key={i}>{s}</div>) : '无明显功能损害';
+                    })()}
+                  </div>
+                </div>
+
+                {/* 家族史 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【家族史】</div>
+                  <div style={{ color: '#4b5563' }}>
+                    {(() => {
+                      const family: string[] = [];
+                      questions.filter(q => q.category === '家族史').forEach(q => {
+                        const r = responses[q.id];
+                        let text = q.question.replace('？', '').replace(/^你的/g, '').replace('有无', '有');
+                        if (r === 'up' || r === 'right') family.push(`• ${text}`);
+                        else if (r === 'down') family.push(`• ${text}（可能）`);
+                      });
+                      return family.length > 0 ? family.map((s, i) => <div key={i}>{s}</div>) : '无相关家族史';
+                    })()}
+                  </div>
+                </div>
+
+                {/* 其他情况 */}
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【其他相关情况】</div>
+                  <div style={{ color: '#4b5563' }}>
+                    {(() => {
+                      const other: string[] = [];
+                      questions.filter(q => q.category === '排除标准' || q.category === '共病筛查').forEach(q => {
+                        const r = responses[q.id];
+                        let text = toStatement(q.question).replace('有无', '有').replace('有过', '有');
+                        if (r === 'up' || r === 'right') other.push(`• ${text}`);
+                        else if (r === 'down') other.push(`• ${text}（可能）`);
+                      });
+                      return other.length > 0 ? other.map((s, i) => <div key={i}>{s}</div>) : '无';
+                    })()}
+                  </div>
+                </div>
+
+                {record.extraNotes?.trim() && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>【患者自述补充】</div>
+                    <div style={{ color: '#4b5563', whiteSpace: 'pre-wrap' }}>{record.extraNotes.trim()}</div>
+                  </div>
+                )}
+
+                {/* 操作按钮 */}
+                <div className="action-buttons" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button onClick={copyMemoToClipboard} style={{ padding: '8px 16px', background: copySuccess ? '#10b981' : '#0f766e', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', transition: 'background 0.2s' }}>
+                    {copySuccess ? '✓ 已复制' : '📋 复制文本'}
+                  </button>
+                  <button onClick={() => window.print()} style={{ padding: '8px 16px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>🖨️ 打印 PDF</button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* 底部提示 */}

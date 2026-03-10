@@ -17,7 +17,7 @@ const quickQuestionIds = new Set(
   questions.slice(0, QUICK_SCREENING_QUESTION_COUNT).map((question) => question.id),
 );
 
-type AssessmentView = 'start' | 'card' | 'quickResult' | 'impact' | 'extraNotes' | 'completion';
+type AssessmentView = 'start' | 'card' | 'quickResult' | 'impact' | 'extraNotes' | 'selectProvince' | 'completion';
 
 interface AssessmentContextType {
   // 鐘舵€?
@@ -25,6 +25,7 @@ interface AssessmentContextType {
   responses: Responses;
   impactLevel: ImpactLevel | null;
   extraNotes: string;
+  selectedProvince: string | null;
   catGesture: CatGesture;
   view: AssessmentView;
   hasNewAssessment: boolean;
@@ -40,6 +41,9 @@ interface AssessmentContextType {
   continueAssessment: () => void;
   selectImpact: (level: ImpactLevel) => void;
   updateExtraNotes: (notes: string) => void;
+  goToSelectProvince: () => void;
+  handleProvinceSelect: (province: string) => void;
+  handleProvinceSkip: () => void;
   submitExtraNotes: () => void;
   skipExtraNotes: () => void;
   setCatGesture: (gesture: CatGesture) => void;
@@ -56,6 +60,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
   const [responses, setResponses] = useState<Responses>({});
   const [impactLevel, setImpactLevel] = useState<ImpactLevel | null>(null);
   const [extraNotes, setExtraNotes] = useState('');
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [catGesture, setCatGesture] = useState<CatGesture>('');
   const [view, setView] = useState<AssessmentView>('start');
   const [hasNewAssessment, setHasNewAssessment] = useState(false);
@@ -67,6 +72,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     setResponses({});
     setImpactLevel(null);
     setExtraNotes('');
+    setSelectedProvince(null);
     setView('card');
   }, []);
 
@@ -76,6 +82,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     setResponses({});
     setImpactLevel(null);
     setExtraNotes('');
+    setSelectedProvince(null);
   }, []);
 
   const enterQuickResult = useCallback(() => {
@@ -128,7 +135,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     setView('extraNotes');
   }, []);
 
-  const finalizeAssessment = useCallback((notes?: string) => {
+  const finalizeAssessment = useCallback((notes?: string, province?: string | null) => {
     if (!impactLevel) return;
 
     const normalizedNotes = notes?.trim();
@@ -149,6 +156,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
       diagnosis,
       responses: { ...responses },
       extraNotes: normalizedNotes || undefined,
+      selectedProvince: province ?? undefined,
     };
 
     addRecord(record);
@@ -156,18 +164,32 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     setView('completion');
   }, [impactLevel, responses]);
 
+  const goToSelectProvince = useCallback(() => {
+    setView('selectProvince');
+  }, []);
+
+  const handleProvinceSelect = useCallback((province: string) => {
+    setSelectedProvince(province);
+    finalizeAssessment(extraNotes, province);
+  }, [extraNotes, finalizeAssessment]);
+
+  const handleProvinceSkip = useCallback(() => {
+    setSelectedProvince(null);
+    finalizeAssessment(extraNotes, undefined);
+  }, [extraNotes, finalizeAssessment]);
+
   const updateExtraNotes = useCallback((notes: string) => {
     setExtraNotes(notes);
   }, []);
 
   const submitExtraNotes = useCallback(() => {
-    finalizeAssessment(extraNotes);
-  }, [extraNotes, finalizeAssessment]);
+    goToSelectProvince();
+  }, [goToSelectProvince]);
 
   const skipExtraNotes = useCallback(() => {
     setExtraNotes('');
-    finalizeAssessment(undefined);
-  }, [finalizeAssessment]);
+    goToSelectProvince();
+  }, [goToSelectProvince]);
 
   const getRecords = useCallback(() => {
     return loadRecords();
@@ -180,6 +202,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
         responses,
         impactLevel,
         extraNotes,
+        selectedProvince,
         catGesture,
         view,
         hasNewAssessment,
@@ -193,6 +216,9 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
         continueAssessment,
         selectImpact,
         updateExtraNotes,
+        goToSelectProvince,
+        handleProvinceSelect,
+        handleProvinceSkip,
         submitExtraNotes,
         skipExtraNotes,
         setCatGesture,

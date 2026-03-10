@@ -2114,6 +2114,96 @@ body {
     border-color: rgba(15, 118, 110, 0.28);
 }
 
+/* Province Picker */
+.province-picker-page {
+    display: flex;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.province-picker-card {
+    width: min(100%, 560px);
+    padding: 24px;
+    border-radius: 22px;
+    border: 1px solid rgba(15, 118, 110, 0.16);
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.province-picker-card h2 {
+    margin: 0;
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+.province-picker-card > p {
+    margin-top: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.province-picker-section {
+    margin-top: 18px;
+}
+
+.province-picker-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.province-municipality-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.province-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.province-btn {
+    min-height: 44px;
+    border: 1px solid rgba(15, 118, 110, 0.25);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.province-btn:active {
+    transform: scale(0.98);
+}
+
+.province-btn.is-empty {
+    opacity: 0.55;
+    color: #64748b;
+    border-color: rgba(100, 116, 139, 0.25);
+}
+
+.province-picker-actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.province-skip {
+    border: 1px solid rgba(15, 118, 110, 0.25);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--primary);
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 @media (max-width: 480px) {
     .quick-result-card {
         padding: 20px 16px;
@@ -2121,5 +2211,17 @@ body {
 
     .quick-result-percent {
         font-size: 56px;
+    }
+
+    .province-picker-card {
+        padding: 20px 16px;
+    }
+
+    .province-municipality-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .province-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

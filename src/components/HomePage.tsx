@@ -9,6 +9,7 @@ import CardStack from '@/components/assessment/CardStack';
 import QuickResultView from '@/components/assessment/QuickResultView';
 import ImpactPicker from '@/components/assessment/ImpactPicker';
 import ExtraNotesView from '@/components/assessment/ExtraNotesView';
+import ProvincePicker from '@/components/assessment/ProvincePicker';
 import CompletionView from '@/components/assessment/CompletionView';
 import { SwipeDirection, CatGesture } from '@/types';
 
@@ -29,6 +30,8 @@ export default function HomePage() {
     updateExtraNotes,
     submitExtraNotes,
     skipExtraNotes,
+    handleProvinceSelect,
+    handleProvinceSkip,
   } = useAssessment();
 
   const [localCatGesture, setLocalCatGesture] = useState<CatGesture>('');
@@ -87,6 +90,10 @@ export default function HomePage() {
             onSkip={skipExtraNotes}
             onSubmit={submitExtraNotes}
           />
+        )}
+
+        {view === 'selectProvince' && (
+          <ProvincePicker onSelect={handleProvinceSelect} onSkip={handleProvinceSkip} />
         )}
 
         {view === 'completion' && <CompletionView />}

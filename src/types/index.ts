@@ -54,6 +54,7 @@ export interface AssessmentRecord {
   diagnosis: Diagnosis;
   responses: Responses;
   extraNotes?: string;
+  selectedProvince?: string;
 }
 
 // 持续时间选项
