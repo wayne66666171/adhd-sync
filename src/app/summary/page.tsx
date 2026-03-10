@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAssessment } from '@/context/AssessmentContext';
 import AIAnalysisView from '@/components/assessment/AIAnalysisView';
-import { loadRecords, getDoctorMode, setDoctorMode as saveDoctorMode } from '@/lib/storage';
+import { loadRecords, getDoctorMode, setDoctorMode as saveDoctorMode, getUnlockedStatus, setUnlockedStatus } from '@/lib/storage';
 import { callAIStream, buildAIPrompt, getSystemPrompt } from '@/lib/ai';
 import { questions } from '@/data/questions';
 import { getSortedHospitals } from '@/data/doctors';
@@ -23,6 +23,10 @@ export default function SummaryPage() {
   const [doctorView, setDoctorView] = useState<'menu' | 'nearby' | 'memo'>('menu');
   const [hoveredDoctorCard, setHoveredDoctorCard] = useState<'nearby' | 'memo' | null>(null);
   const [pressedDoctorCard, setPressedDoctorCard] = useState<'nearby' | 'memo' | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
   const hasAutoTriggeredAIRef = useRef(false);
 
   // ADHD 趣味小知识
@@ -43,7 +47,9 @@ export default function SummaryPage() {
 
   useEffect(() => {
     setRecords(loadRecords());
-    setIsDoctorMode(getDoctorMode());
+    const unlocked = getUnlockedStatus();
+    setIsUnlocked(unlocked);
+    setIsDoctorMode(unlocked ? getDoctorMode() : false);
   }, []);
 
   // 轮播小知识
@@ -64,12 +70,14 @@ export default function SummaryPage() {
   }, [record?.selectedProvince]);
 
   const handleModeChange = (mode: boolean) => {
+    if (!isUnlocked && mode) return;
     setIsDoctorMode(mode);
     if (mode) setDoctorView('menu');
     saveDoctorMode(mode);
   };
 
   const handleDoctorCardClick = (view: 'nearby' | 'memo') => {
+    if (view === 'memo' && !isUnlocked) return;
     setPressedDoctorCard(view);
     setTimeout(() => {
       setPressedDoctorCard(null);
@@ -82,13 +90,54 @@ export default function SummaryPage() {
     router.push('/history');
   };
 
-  const generateAIAnalysis = useCallback(async () => {
+  const handleVerifyCode = useCallback(async () => {
+    const code = accessCode.trim();
+    if (!code) {
+      setVerifyError('请输入 ADHD密钥');
+      return;
+    }
+
+    setVerifyLoading(true);
+    setVerifyError('');
+
+    try {
+      const response = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.valid) {
+        setVerifyError(data.message || 'ADHD密钥错误，请重试');
+        return;
+      }
+
+      setIsUnlocked(true);
+      setUnlockedStatus(true);
+      setVerifyError('');
+    } catch {
+      setVerifyError('网络异常，请稍后再试');
+    } finally {
+      setVerifyLoading(false);
+    }
+  }, [accessCode]);
+
+  const handleAccessCodeKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void handleVerifyCode();
+    }
+  };
+
+  const generateAIAnalysis = useCallback(async (modeOverride?: boolean) => {
     if (!record) return;
     setAiLoading(true);
     setAiContent('');
 
-    const prompt = buildAIPrompt(record, responses, isDoctorMode);
-    const systemPrompt = getSystemPrompt(isDoctorMode);
+    const mode = modeOverride ?? isDoctorMode;
+    const prompt = buildAIPrompt(record, responses, mode);
+    const systemPrompt = getSystemPrompt(mode);
 
     const result = await callAIStream(prompt, systemPrompt, (chunk) => {
       setAiContent(prev => prev + chunk);
@@ -101,14 +150,17 @@ export default function SummaryPage() {
   }, [record, responses, isDoctorMode]);
 
   useEffect(() => {
-    if (isDoctorMode) return;
+    hasAutoTriggeredAIRef.current = false;
+  }, [historyIndex, record?.date]);
+
+  useEffect(() => {
     if (hasAutoTriggeredAIRef.current) return;
     if (!record || !responses) return;
     if (Object.keys(responses).length === 0) return;
 
     hasAutoTriggeredAIRef.current = true;
-    void generateAIAnalysis();
-  }, [record, responses, isDoctorMode, generateAIAnalysis]);
+    void generateAIAnalysis(false);
+  }, [record, responses, generateAIAnalysis]);
 
   // 定义维度分数类型
   type DimScoresType = {
@@ -491,10 +543,20 @@ export default function SummaryPage() {
           <div
             className="mode-switch-btn"
             onClick={() => handleModeChange(true)}
-            style={{ flex: 1, padding: '12px 16px', textAlign: 'center', borderRadius: '10px', cursor: 'pointer', transition: 'all .2s', background: isDoctorMode ? 'white' : 'transparent', boxShadow: isDoctorMode ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              textAlign: 'center',
+              borderRadius: '10px',
+              cursor: isUnlocked ? 'pointer' : 'not-allowed',
+              transition: 'all .2s',
+              background: isDoctorMode ? 'white' : 'transparent',
+              boxShadow: isDoctorMode ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+              opacity: isUnlocked ? 1 : 0.66
+            }}
           >
             <div style={{ fontWeight: 600, color: isDoctorMode ? '#0f766e' : '#64748b', fontSize: '14px' }}>🩺 医生查看模式</div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>就诊备忘录</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{isUnlocked ? '就诊备忘录' : '🔒 需 ADHD密钥解锁'}</div>
           </div>
         </div>
 
@@ -540,8 +602,40 @@ export default function SummaryPage() {
               </div>
             </div>
 
-            {/* AI 分析区域 */}
-            <div style={{ marginBottom: '24px' }}>
+            {!isUnlocked && (
+              <div className="summary-code-card">
+                <div className="summary-code-title">🔐 ADHD密钥</div>
+                <p className="summary-code-desc">输入密钥后可解锁 AI分析、雷达图、大脑画像、扎心榜单和医生查看模式。</p>
+                <div className="summary-code-form">
+                  <input
+                    type="text"
+                    value={accessCode}
+                    onChange={(event) => {
+                      setAccessCode(event.target.value);
+                      if (verifyError) setVerifyError('');
+                    }}
+                    onKeyDown={handleAccessCodeKeyDown}
+                    placeholder="请输入 ADHD密钥"
+                    className="summary-code-input"
+                    disabled={verifyLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleVerifyCode()}
+                    className="summary-code-submit"
+                    disabled={verifyLoading}
+                  >
+                    {verifyLoading ? '验证中...' : '解锁'}
+                  </button>
+                </div>
+                {verifyError && <p className="summary-code-error">{verifyError}</p>}
+              </div>
+            )}
+
+            <div className={isUnlocked ? 'summary-paywall-section' : 'summary-paywall-section is-locked'}>
+              <div className="summary-paywall-content">
+                {/* AI 分析区域 */}
+                <div style={{ marginBottom: '24px' }}>
               <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '2px', borderLeft: '3px solid #8b5cf6', paddingLeft: '12px' }}>🤖 AI 分析</h3>
               <div id="ai-analysis-content" style={{ padding: '20px', background: 'linear-gradient(135deg, #faf5ff 0%, #f0f9ff 100%)', borderRadius: '12px', fontSize: '14px', color: '#374151' }}>
                 {aiLoading ? (
@@ -582,7 +676,7 @@ export default function SummaryPage() {
                   <>
                     <AIAnalysisView aiContent={aiContent} />
                     <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', textAlign: 'right' }}>
-                      <button onClick={generateAIAnalysis} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#64748B' }}>🔄 重新生成</button>
+                      <button onClick={() => generateAIAnalysis()} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#64748B' }}>🔄 重新生成</button>
                     </div>
                   </>
                 ) : (
@@ -623,6 +717,14 @@ export default function SummaryPage() {
                 </div>
               )) : (
                 <p style={{ color: '#64748B', fontSize: '14px', padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>无显著痛点记录</p>
+              )}
+            </div>
+              </div>
+              {!isUnlocked && (
+                <div className="summary-paywall-overlay">
+                  <div className="summary-paywall-badge">🔒 ADHD密钥专属内容</div>
+                  <p className="summary-paywall-text">解锁后可立即查看 AI分析结果、维度雷达图、大脑画像、扎心榜单与医生查看模式。</p>
+                </div>
               )}
             </div>
           </>
@@ -677,9 +779,10 @@ export default function SummaryPage() {
                     aspectRatio: '1 / 1',
                     border: 'none',
                     borderRadius: '20px',
-                    cursor: 'pointer',
+                    cursor: isUnlocked ? 'pointer' : 'not-allowed',
                     padding: '20px',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #38bdf8 100%)',
+                    background: isUnlocked ? 'linear-gradient(135deg, #3b82f6 0%, #38bdf8 100%)' : 'linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%)',
+                    opacity: isUnlocked ? 1 : 0.75,
                     color: 'white',
                     display: 'flex',
                     flexDirection: 'column',
@@ -690,8 +793,8 @@ export default function SummaryPage() {
                     transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                   }}
                 >
-                  <div style={{ fontSize: '40px', lineHeight: 1 }}>📋</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700 }}>就诊备忘录</div>
+                  <div style={{ fontSize: '40px', lineHeight: 1 }}>{isUnlocked ? '📋' : '🔒'}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700 }}>{isUnlocked ? '就诊备忘录' : '就诊备忘录（需密钥）'}</div>
                 </button>
               </div>
             )}
