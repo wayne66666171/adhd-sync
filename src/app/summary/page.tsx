@@ -7,7 +7,8 @@ import AIAnalysisView from '@/components/assessment/AIAnalysisView';
 import { loadRecords, getDoctorMode, setDoctorMode as saveDoctorMode } from '@/lib/storage';
 import { callAIStream, buildAIPrompt, getSystemPrompt } from '@/lib/ai';
 import { questions } from '@/data/questions';
-import { getDoctorsByProvince } from '@/data/doctors';
+import { getSortedHospitals } from '@/data/doctors';
+import HospitalCardSwiper from '@/components/assessment/HospitalCardSwiper';
 import { AssessmentRecord, Responses } from '@/types';
 
 export default function SummaryPage() {
@@ -57,9 +58,9 @@ export default function SummaryPage() {
   const historyIndex = viewingHistoryIndex !== undefined ? viewingHistoryIndex : 0;
   const record = records[historyIndex];
   const responses = record?.responses || contextResponses;
-  const doctorsInSelectedProvince = useMemo(() => {
+  const sortedHospitals = useMemo(() => {
     if (!record?.selectedProvince) return [];
-    return getDoctorsByProvince(record.selectedProvince);
+    return getSortedHospitals(record.selectedProvince);
   }, [record?.selectedProvince]);
 
   const handleModeChange = (mode: boolean) => {
@@ -660,7 +661,7 @@ export default function SummaryPage() {
                   }}
                 >
                   <div style={{ fontSize: '40px', lineHeight: 1 }}>🗺️</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700 }}>附近ADHD医生</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700 }}>附近ADHD医院</div>
                 </button>
                 <button
                   type="button"
@@ -704,44 +705,9 @@ export default function SummaryPage() {
                 >
                   ← 返回
                 </button>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '14px' }}>附近ADHD医生</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '14px' }}>附近ADHD医院</h3>
                 {record.selectedProvince ? (
-                  doctorsInSelectedProvince.length > 0 ? (
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                      {doctorsInSelectedProvince.map((doctor, index) => (
-                        <div
-                          key={`${doctor.hospital}-${doctor.department}-${index}`}
-                          style={{ padding: '14px 16px', borderRadius: '12px', background: '#ffffff', border: '1px solid #e2e8f0' }}
-                        >
-                          <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{doctor.hospital}</div>
-                          <div style={{ marginTop: '6px', fontSize: '13px', color: '#475569' }}>{doctor.city} · {doctor.department}</div>
-                          {doctor.notes && <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>{doctor.notes}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ padding: '16px', borderRadius: '12px', background: '#ffffff', border: '1px solid #e2e8f0' }}>
-                      <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>暂无该地区社群数据</p>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-                        <a
-                          href="https://www.haodf.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #0f766e', color: '#0f766e', textDecoration: 'none', fontSize: '13px', fontWeight: 600, background: '#fff' }}
-                        >
-                          好大夫在线
-                        </a>
-                        <a
-                          href="https://jk.jd.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #0f766e', color: '#0f766e', textDecoration: 'none', fontSize: '13px', fontWeight: 600, background: '#fff' }}
-                        >
-                          京东健康
-                        </a>
-                      </div>
-                    </div>
-                  )
+                  <HospitalCardSwiper hospitals={sortedHospitals} />
                 ) : (
                   <div style={{ padding: '16px', borderRadius: '12px', background: '#ffffff', border: '1px solid #e2e8f0', color: '#64748b', fontSize: '14px' }}>
                     完成评估时未选择省份
