@@ -2294,14 +2294,14 @@ body {
 
 .province-btn {
     min-height: 44px;
-    border: 1px solid rgba(15, 118, 110, 0.25);
+    border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 12px;
     background: #ffffff;
-    color: var(--primary);
+    color: #111827;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .province-btn:active {
@@ -2309,9 +2309,8 @@ body {
 }
 
 .province-btn.is-empty {
-    opacity: 0.55;
-    color: #64748b;
-    border-color: rgba(100, 116, 139, 0.25);
+    color: #111827;
+    border-color: rgba(0, 0, 0, 0.15);
 }
 
 .province-picker-actions {
