@@ -38,15 +38,3 @@ export function setDoctorMode(mode: boolean): void {
   }
 }
 
-const UNLOCK_KEY = 'adhd_unlocked';
-
-export function getUnlockedStatus(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(UNLOCK_KEY) === 'true';
-}
-
-export function setUnlockedStatus(unlocked: boolean): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(UNLOCK_KEY, String(unlocked));
-  }
-}
