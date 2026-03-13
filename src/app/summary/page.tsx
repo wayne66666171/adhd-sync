@@ -639,7 +639,6 @@ export default function SummaryPage() {
                 <p style={{ color: '#64748B', fontSize: '14px', padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>无显著痛点记录</p>
               )}
             </div>
-            </div>
           </>
         )}
 
